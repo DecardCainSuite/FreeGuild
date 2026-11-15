@@ -9,11 +9,12 @@
 
 <table>
 <tr>
-<td width="50%" valign="top"><img src="curseforge/images/fg_2.png" alt="Your whole roster, at a glance"><br><b>Your whole roster, at a glance</b><br><sub>Sort, search, filter, select many members at once.</sub></td>
-<td width="50%" valign="top"><img src="curseforge/images/fg_3.png" alt="Rules that promote for you"><br><b>Rules that promote for you</b><br><sub>Level, class, seniority, last online, notes… mapped to ranks.</sub></td>
+<td width="50%" valign="top"><img src="curseforge/images/fg_2.png" alt="Your whole roster, at a glance"><br><b>Your whole roster, at a glance</b><br><sub>Sort, search, filter, select many members at once; To change shows who your rules would move.</sub></td>
+<td width="50%" valign="top"><img src="curseforge/images/fg_3.png" alt="Your guild in numbers"><br><b>Your guild in numbers</b><br><sub>Members by class, level band and rank; click a line to open the roster on it.</sub></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="curseforge/images/fg_4.png" alt="One click per change"><br><b>One click per change</b><br><sub>The game allows one rank change per click; Free Guild queues them for you.</sub></td>
+<td width="50%" valign="top"><img src="curseforge/images/fg_4.png" alt="Rules that promote for you"><br><b>Rules that promote for you</b><br><sub>Level, class, rank, days in the guild, days offline, notes… mapped to ranks.</sub></td>
+<td width="50%" valign="top"><img src="curseforge/images/fg_5.png" alt="One click per change"><br><b>One click per change</b><br><sub>The game allows one rank change per click; Free Guild queues them for you.</sub></td>
 </tr>
 </table>
 

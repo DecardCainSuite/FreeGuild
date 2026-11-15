@@ -11,9 +11,10 @@
 ## Gallery (title — description)
 
 1. `images/fg_1.png` — **Free Guild** — Guild ranks, sorted out in a few clicks.
-2. `images/fg_2.png` — **Your whole roster, at a glance** — Sort, search, filter, select many members at once.
-3. `images/fg_3.png` — **Rules that promote for you** — Level, class, seniority, last online, notes… mapped to ranks.
-4. `images/fg_4.png` — **One click per change** — The game allows one rank change per click; Free Guild queues them for you.
+2. `images/fg_2.png` — **Your whole roster, at a glance** — Sort, search, filter, select many members at once; To change shows who your rules would move.
+3. `images/fg_3.png` — **Your guild in numbers** — Members by class, level band and rank; click a line to open the roster on it.
+4. `images/fg_4.png` — **Rules that promote for you** — Level, class, rank, days in the guild, days offline, notes… mapped to ranks.
+5. `images/fg_5.png` — **One click per change** — The game allows one rank change per click; Free Guild queues them for you.
 
 ---
 
