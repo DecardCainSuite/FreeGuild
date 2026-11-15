@@ -1,0 +1,6 @@
+<Bindings>
+	<Binding name="CLICK FreeGuildApplyButton:LeftButton" header="FREEGUILD" category="ADDONS"/>
+	<Binding name="FREEGUILD_TOGGLE" category="ADDONS">
+		FreeGuild_Toggle()
+	</Binding>
+</Bindings>

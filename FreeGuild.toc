@@ -1,0 +1,21 @@
+## Interface: 16001
+## Title: Free Guild
+## Notes: Guild roster for leaders and officers: select many members, give them a rank, and level rules (15-29 -> Member...), group invites and raid rosters with attendance. /fg
+## Category: Guild
+## Author: DecardCain
+## Version: 1.4.0
+## IconTexture: Interface\AddOns\FreeGuild\Media\icon
+## OptionalDeps: FreeHub
+## SavedVariables: FreeGuildDB
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+Libs\LibFreeProfiles-1.0\LibFreeProfiles-1.0.lua
+Libs\LibFreeUI-1.0\LibFreeUI-1.0.lua
+
+Core.lua
+Raids.lua
+Config.lua
+Minimap.lua
