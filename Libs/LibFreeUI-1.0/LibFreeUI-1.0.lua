@@ -7,7 +7,7 @@
      local kit = LibStub("LibFreeUI-1.0"):New({ name = "FreeGuildOptions", title = "Free Guild", sub = "Guild ranks",
                                                  icon = path, w = 860, h = 640, addon = "FreeGuild" })
 ]]
-local MAJOR, MINOR = "LibFreeUI-1.0", 2
+local MAJOR, MINOR = "LibFreeUI-1.0", 4
 local lib = LibStub and LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -362,29 +362,62 @@ function Kit:Dropdown(parent, text, x, y, width, getItems, get, set, labelW)
     self:Border(list, 0.12)
     local ROWS, RH = 12, 22
     local rows, offset = {}, 0
+    -- slim scroll bar, shown only when there are more items than rows (the list scrolls with the mouse wheel)
+    local track = self:Fill(list, { 1, 1, 1, 0.06 }, "OVERLAY"); track:SetWidth(4); track:SetPoint("TOPRIGHT", -2, -2); track:SetPoint("BOTTOMRIGHT", -2, 2)
+    local thumb = self:Fill(list, C.accent, "OVERLAY", 2); thumb:SetWidth(4)
     for i = 1, ROWS do
         local r = CreateFrame("Button", nil, list)
         r:SetHeight(RH)
         r:SetPoint("TOPLEFT", 1, -1 - (i - 1) * RH); r:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * RH)
         r.hl = self:Fill(r, { 1, 1, 1, 0.08 }, "ARTWORK", 2); r.hl:SetAllPoints(); r.hl:Hide()
         r.text = self:Text(r, 12, C.text); r.text:SetPoint("LEFT", 8, 0); r.text:SetPoint("RIGHT", -8, 0); r.text:SetWordWrap(false)
-        r:SetScript("OnEnter", function(s) s.hl:Show() end)
+        -- item.check = true/false: a check box (filled orange when on); item.sep = a separator line
+        r.box = self:Fill(r, C.control, "ARTWORK", 1); r.box:SetSize(12, 12); r.box:SetPoint("LEFT", 8, 0); r.box:Hide()
+        r.sep = self:Fill(r, { 1, 1, 1, 0.12 }, "ARTWORK", 1); r.sep:SetHeight(1); r.sep:SetPoint("LEFT", 6, 0); r.sep:SetPoint("RIGHT", -10, 0); r.sep:Hide()
+        r:SetScript("OnEnter", function(s) if not s.isSep then s.hl:Show() end end)
         r:SetScript("OnLeave", function(s) s.hl:Hide() end)
-        r:SetScript("OnClick", function(s) list:Hide(); lib.openList = nil; if s.key ~= nil then set(s.key) end end)
+        -- item.keepOpen: the list stays open after a click (multi-select)
+        r:SetScript("OnClick", function(s)
+            if s.isSep then return end
+            if s.keepOpen then
+                if s.key ~= nil then set(s.key) end
+                if list.render then list.render() end
+                if kit.Refresh then kit:Refresh() end
+                return
+            end
+            list:Hide(); lib.openList = nil; if s.key ~= nil then set(s.key) end
+        end)
         rows[i] = r
     end
     local function render()
         local items = getItems()
         offset = math.max(0, math.min(offset, #items - ROWS))
         list:SetHeight(math.min(ROWS, #items) * RH + 2)
+        if #items > ROWS then
+            local h = ROWS * RH - 2
+            local th = math.max(16, h * ROWS / #items)
+            thumb:SetHeight(th); thumb:ClearAllPoints()
+            thumb:SetPoint("TOPRIGHT", list, "TOPRIGHT", -2, -2 - (h - th) * offset / (#items - ROWS))
+            track:Show(); thumb:Show()
+        else
+            track:Hide(); thumb:Hide()
+        end
         for i = 1, ROWS do
             local it = items[i + offset]
             local r = rows[i]
             if it then
-                r.key = it.key
+                r.key, r.keepOpen, r.isSep = it.key, it.keepOpen and true or false, it.sep and true or false
                 PaintFont(r.text, it, 12)
-                r.text:SetText(it.label)
-                r.text:SetTextColor(unpack(it.key == get() and C.accent or (it.color or C.text)))
+                r.sep:SetShown(r.isSep)
+                r.text:ClearAllPoints(); r.text:SetPoint("RIGHT", -8, 0)
+                if it.check ~= nil then
+                    r.box:Show(); r.box:SetVertexColor(unpack(it.check and C.accent or C.control))
+                    r.text:SetPoint("LEFT", 28, 0)
+                else
+                    r.box:Hide(); r.text:SetPoint("LEFT", 8, 0)
+                end
+                r.text:SetText(r.isSep and "" or (it.label or ""))
+                r.text:SetTextColor(unpack(((it.check == nil) and it.key == get()) and C.accent or (it.color or C.text)))
                 r:Show()
             else
                 r.key = nil
@@ -392,6 +425,7 @@ function Kit:Dropdown(parent, text, x, y, width, getItems, get, set, labelW)
             end
         end
     end
+    list.render = render
     list:SetScript("OnMouseWheel", function(_, d) offset = offset - d * 3; render() end)
     b:SetScript("OnClick", function()
         if list:IsShown() then list:Hide(); lib.openList = nil; return end

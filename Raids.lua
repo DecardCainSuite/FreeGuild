@@ -224,7 +224,7 @@ end
 function ns.CycleLastStatus(name)
     local ro = ns.CurRoster(); local ev = ro and ro.events[#ro.events]
     if not ev then return end
-    ev.s[name] = cycle({ "P", "A", "E", "B" }, ev.s[name] or "B")
+    ev.s[name] = cycle({ "P", "A", "E", "B" }, ev.s[name]) or "P"   -- after Bench (or unrecorded): back to Present
     Changed()
 end
 
