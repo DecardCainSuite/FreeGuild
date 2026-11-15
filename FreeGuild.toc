@@ -3,7 +3,7 @@
 ## Notes: Guild roster for leaders and officers: select many members, give them a rank, and level rules (15-29 -> Member...), group invites and raid rosters with attendance. /fg
 ## Category: Guild
 ## Author: DecardCain
-## Version: 1.4.0
+## Version: 1.4.1
 ## X-Curse-Project-ID: 1798510
 ## IconTexture: Interface\AddOns\FreeGuild\Media\icon
 ## OptionalDeps: FreeHub
