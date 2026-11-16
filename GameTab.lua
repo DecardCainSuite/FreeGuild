@@ -18,12 +18,6 @@ local function Get(obj, method, ...)
     return Call(obj[method], obj, ...)
 end
 
-local function Children(obj)
-    if not (obj and obj.GetChildren) then return {} end
-    local ok, values = pcall(function() return { obj:GetChildren() } end)
-    return ok and values or {}
-end
-
 local function ScreenRect(obj)
     local scale = Get(obj, "GetEffectiveScale") or 1
     local left, bottom = Get(obj, "GetLeft"), Get(obj, "GetBottom")
@@ -32,69 +26,27 @@ local function ScreenRect(obj)
     return left * scale, bottom * scale, width * scale, height * scale
 end
 
--- The finder version of this routine was measured against the live Blizzard
--- frame. Keep its coordinate checks so scale changes and nested tab parents
--- are handled the same way here.
-local function FindTabs(frame, ours)
-    local left, _, width = ScreenRect(frame)
-    if not left then return {} end
-    local scale = Get(frame, "GetEffectiveScale") or 1
-    local right = left + width
-    local found, seen = {}, {}
-    local function consider(tab)
-        if not tab or seen[tab] or tab == ours then return end
-        seen[tab] = true
-        local kind = Get(tab, "GetObjectType")
-        if kind ~= "Button" and kind ~= "CheckButton" and kind ~= "Frame" then return end
-        if Get(tab, "IsShown") == false then return end
-        local x, _, w, h = ScreenRect(tab)
-        if not x or w <= 0 or h <= 0 then return end
-        local square = math.abs(w - h) <= 0.4 * math.max(w, h)
-        if x >= right - 6 * scale and x <= right + 60 * scale
-            and square and w >= 24 * scale and h >= 24 * scale then
-            found[#found + 1] = tab
-        end
-    end
-    for _, name in ipairs(TAB_NAMES) do consider(frame[name]) end
-    local function walk(parent, depth)
-        for _, child in ipairs(Children(parent)) do
-            consider(child)
-            if depth < 3 then walk(child, depth + 1) end
-        end
-    end
-    walk(frame, 1)
-    local maxWidth = 0
-    for _, tab in ipairs(found) do local _, _, w = ScreenRect(tab); if w and w > maxWidth then maxWidth = w end end
-    local kept = {}
-    for _, tab in ipairs(found) do local _, _, w = ScreenRect(tab); if w and w >= maxWidth * 0.7 then kept[#kept + 1] = tab end end
-    table.sort(kept, function(a, b)
-        local _, ab, _, ah = ScreenRect(a); local _, bb, _, bh = ScreenRect(b)
-        return ((ab or 0) + (ah or 0)) > ((bb or 0) + (bh or 0))
-    end)
-    return kept
-end
-
 local function AtlasAvailable(tex, atlas)
     if not tex or not tex.SetAtlas then return false end
-    local ok = pcall(tex.SetAtlas, tex, atlas, true)
+    local ok = pcall(tex.SetAtlas, tex, atlas)
     if not ok then return false end
     if C_Texture and C_Texture.GetAtlasInfo then
         local got, info = pcall(C_Texture.GetAtlasInfo, atlas)
-        if got and not info then return false end
+        if not got or not info then return false end
     end
     return true
 end
 
 local function SetIcon(tab, width, hasAtlas)
     local icon = tab:CreateTexture(nil, "ARTWORK")
-    icon:SetTexture(MEDIA .. "icon")
+    icon:SetTexture(MEDIA .. "tab")
     icon:SetSize(width * 50 / 55, width * 50 / 55)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    icon:SetTexCoord(0, 1, 0, 1)
     icon:SetPoint("CENTER", tab, "CENTER", -width * 3 / 55, 0)
     if tab.CreateMaskTexture and icon.AddMaskTexture then
         local ok = pcall(function()
             local mask = tab:CreateMaskTexture()
-            if hasAtlas then mask:SetAtlas("common-sidetab-mask", true)
+            if hasAtlas then mask:SetAtlas("common-sidetab-mask")
             else mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE") end
             mask:SetAllPoints(icon)
             icon:AddMaskTexture(mask)
@@ -104,16 +56,41 @@ local function SetIcon(tab, width, hasAtlas)
     return icon
 end
 
-local function Place(frame, button)
-    local found = FindTabs(frame, button)
-    local last = found[#found]
+local function NativeGap(frame, anchor)
+    local _, anchorBottom, anchorWidth, anchorHeight = ScreenRect(anchor)
+    if not anchorBottom then return 4 end
     local scale = Get(frame, "GetEffectiveScale") or 1
-    local screenWidth
-    if last then local _, _, width = ScreenRect(last); screenWidth = width end
-    local width = screenWidth and screenWidth / scale or 32
-    width = math.max(20, math.min(80, width))
+    local anchorLeft = ScreenRect(anchor)
+    local nearestAbove
+    for _, name in ipairs(TAB_NAMES) do
+        local other = frame[name]
+        if other and other ~= anchor and Get(other, "IsShown") ~= false then
+            local left, bottom = ScreenRect(other)
+            if left and bottom and bottom > anchorBottom
+                and math.abs(left - anchorLeft) <= math.max(8 * scale, anchorWidth * 0.25)
+                and (not nearestAbove or bottom < nearestAbove) then
+                nearestAbove = bottom
+            end
+        end
+    end
+    if nearestAbove then
+        local gap = (nearestAbove - (anchorBottom + anchorHeight)) / scale
+        if gap >= 0 and gap <= 40 then return gap end
+    end
+    return 4
+end
+
+local function Place(frame, button)
+    local anchor = frame.GuildInfoTab
+    if not anchor then button:Hide(); return false end
+    local parentScale = Get(frame, "GetEffectiveScale") or 1
+    local anchorScale = Get(anchor, "GetEffectiveScale") or parentScale
+    local width = (Get(anchor, "GetWidth") or 35) * anchorScale / parentScale
+    local height = (Get(anchor, "GetHeight") or width) * anchorScale / parentScale
+    width = math.max(20, math.min(64, width))
+    height = math.max(20, math.min(64, height))
     button:ClearAllPoints()
-    button:SetSize(width, width)
+    button:SetSize(width, height)
     if button.fgAtlas then
         button.fgArt:SetSize(width, width * 60 / 55)
         button.fgArt:ClearAllPoints(); button.fgArt:SetPoint("CENTER")
@@ -128,32 +105,10 @@ local function Place(frame, button)
         button.fgIcon:ClearAllPoints(); button.fgIcon:SetPoint("CENTER")
         button.fgHighlight:SetAllPoints()
     end
-    if last then
-        local gap, nearestAbove
-        local _, lastBottom, _, lastHeight = ScreenRect(last)
-        for _, tab in ipairs(found) do
-            if tab ~= last then
-                local _, bottom, _, height = ScreenRect(tab)
-                if bottom and bottom > lastBottom and (not nearestAbove or bottom < nearestAbove) then
-                    nearestAbove = bottom
-                end
-            end
-        end
-        if nearestAbove then
-            local measured = (nearestAbove - (lastBottom + lastHeight)) / scale
-            if measured >= 0 and measured <= 40 then gap = measured end
-        end
-        button:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -(gap or 8))
-        button:SetFrameStrata(Get(last, "GetFrameStrata") or Get(frame, "GetFrameStrata") or "MEDIUM")
-        button:SetFrameLevel(Get(last, "GetFrameLevel") or Get(frame, "GetFrameLevel") or 1)
-    else
-        local guildTab = frame.GuildInfoTab
-        if guildTab then button:SetPoint("TOPLEFT", guildTab, "BOTTOMLEFT", 0, -8)
-        else button:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 2, 70) end
-        button:SetFrameStrata(Get(frame, "GetFrameStrata") or "MEDIUM")
-        button:SetFrameLevel((Get(frame, "GetFrameLevel") or 1) + 2)
-    end
-    return width
+    button:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -NativeGap(frame, anchor))
+    button:SetFrameStrata(Get(anchor, "GetFrameStrata") or Get(frame, "GetFrameStrata") or "MEDIUM")
+    button:SetFrameLevel(Get(anchor, "GetFrameLevel") or Get(frame, "GetFrameLevel") or 1)
+    return true
 end
 
 local function Update(frame)
@@ -163,8 +118,8 @@ local function Update(frame)
     local guildTab = frame.GuildInfoTab
     local show = IsInGuild and IsInGuild() and Get(frame, "IsShown") ~= false
         and guildTab and Get(guildTab, "IsShown") ~= false
-    button:SetShown(show and true or false)
-    if show then Place(frame, button) end
+    if show and Place(frame, button) then button:SetShown(true)
+    else button:SetShown(false) end
     return show and true or false
 end
 

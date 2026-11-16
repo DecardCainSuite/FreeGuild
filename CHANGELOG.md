@@ -1,6 +1,7 @@
 ## Free Guild 1.4.3
 
 - Add a side tab to the Guild & Communities window that opens Free Guild.
+- Match the native tab's size and position, and use dedicated side-tab artwork.
 
 ## Free Guild 1.4.2
 
