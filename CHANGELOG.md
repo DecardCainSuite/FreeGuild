@@ -1,3 +1,7 @@
+## Free Guild 1.4.3
+
+- Add a side tab to the Guild & Communities window that opens Free Guild.
+
 ## Free Guild 1.4.2
 
 - Raids tab: clicking the last raid status after **Bench** now goes back to **Present** (it used to get stuck on an empty status).

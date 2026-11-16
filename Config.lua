@@ -1098,4 +1098,18 @@ ns.ToggleConfig = function()
     ns.RequestGuildInfo()
     kit:Toggle("FreeGuild", DoBuild)
 end
+
+-- Open the guild window without toggling it closed when reached from the game's side tab.
+ns.OpenConfig = function()
+    if not ns.GetDB() then return end
+    ns.RequestRoster()
+    ns.RequestGuildInfo()
+    if inHub and FreeHub and FreeHub.Open then
+        FreeHub:Open("FreeGuild")
+        return
+    end
+    DoBuild()
+    if kit.frame then kit.frame:Show() end
+end
+
 function FreeGuild_Toggle() ns.ToggleConfig() end

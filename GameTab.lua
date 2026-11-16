@@ -1,0 +1,238 @@
+-- A side tab on the native Guild & Communities window, matching the game's tabs.
+-- Like FreeLFG's group-finder tab, this is an independent button: Blizzard's
+-- frame is only observed and post-hooked, never re-parented or scripted over.
+local ADDON, ns = ...
+local MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\"
+local MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local TAB_NAMES = { "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab" }
+local tabs, hooked = {}, {}
+
+local function Call(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, a, b, c, d, e = pcall(fn, ...)
+    if ok then return a, b, c, d, e end
+end
+
+local function Get(obj, method, ...)
+    if type(obj) ~= "table" then return nil end
+    return Call(obj[method], obj, ...)
+end
+
+local function Children(obj)
+    if not (obj and obj.GetChildren) then return {} end
+    local ok, values = pcall(function() return { obj:GetChildren() } end)
+    return ok and values or {}
+end
+
+local function ScreenRect(obj)
+    local scale = Get(obj, "GetEffectiveScale") or 1
+    local left, bottom = Get(obj, "GetLeft"), Get(obj, "GetBottom")
+    local width, height = Get(obj, "GetWidth"), Get(obj, "GetHeight")
+    if not (left and bottom and width and height) then return nil end
+    return left * scale, bottom * scale, width * scale, height * scale
+end
+
+-- The finder version of this routine was measured against the live Blizzard
+-- frame. Keep its coordinate checks so scale changes and nested tab parents
+-- are handled the same way here.
+local function FindTabs(frame, ours)
+    local left, _, width = ScreenRect(frame)
+    if not left then return {} end
+    local scale = Get(frame, "GetEffectiveScale") or 1
+    local right = left + width
+    local found, seen = {}, {}
+    local function consider(tab)
+        if not tab or seen[tab] or tab == ours then return end
+        seen[tab] = true
+        local kind = Get(tab, "GetObjectType")
+        if kind ~= "Button" and kind ~= "CheckButton" and kind ~= "Frame" then return end
+        if Get(tab, "IsShown") == false then return end
+        local x, _, w, h = ScreenRect(tab)
+        if not x or w <= 0 or h <= 0 then return end
+        local square = math.abs(w - h) <= 0.4 * math.max(w, h)
+        if x >= right - 6 * scale and x <= right + 60 * scale
+            and square and w >= 24 * scale and h >= 24 * scale then
+            found[#found + 1] = tab
+        end
+    end
+    for _, name in ipairs(TAB_NAMES) do consider(frame[name]) end
+    local function walk(parent, depth)
+        for _, child in ipairs(Children(parent)) do
+            consider(child)
+            if depth < 3 then walk(child, depth + 1) end
+        end
+    end
+    walk(frame, 1)
+    local maxWidth = 0
+    for _, tab in ipairs(found) do local _, _, w = ScreenRect(tab); if w and w > maxWidth then maxWidth = w end end
+    local kept = {}
+    for _, tab in ipairs(found) do local _, _, w = ScreenRect(tab); if w and w >= maxWidth * 0.7 then kept[#kept + 1] = tab end end
+    table.sort(kept, function(a, b)
+        local _, ab, _, ah = ScreenRect(a); local _, bb, _, bh = ScreenRect(b)
+        return ((ab or 0) + (ah or 0)) > ((bb or 0) + (bh or 0))
+    end)
+    return kept
+end
+
+local function AtlasAvailable(tex, atlas)
+    if not tex or not tex.SetAtlas then return false end
+    local ok = pcall(tex.SetAtlas, tex, atlas, true)
+    if not ok then return false end
+    if C_Texture and C_Texture.GetAtlasInfo then
+        local got, info = pcall(C_Texture.GetAtlasInfo, atlas)
+        if got and not info then return false end
+    end
+    return true
+end
+
+local function SetIcon(tab, width, hasAtlas)
+    local icon = tab:CreateTexture(nil, "ARTWORK")
+    icon:SetTexture(MEDIA .. "icon")
+    icon:SetSize(width * 50 / 55, width * 50 / 55)
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    icon:SetPoint("CENTER", tab, "CENTER", -width * 3 / 55, 0)
+    if tab.CreateMaskTexture and icon.AddMaskTexture then
+        local ok = pcall(function()
+            local mask = tab:CreateMaskTexture()
+            if hasAtlas then mask:SetAtlas("common-sidetab-mask", true)
+            else mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE") end
+            mask:SetAllPoints(icon)
+            icon:AddMaskTexture(mask)
+        end)
+        if not ok then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    end
+    return icon
+end
+
+local function Place(frame, button)
+    local found = FindTabs(frame, button)
+    local last = found[#found]
+    local scale = Get(frame, "GetEffectiveScale") or 1
+    local screenWidth
+    if last then local _, _, width = ScreenRect(last); screenWidth = width end
+    local width = screenWidth and screenWidth / scale or 32
+    width = math.max(20, math.min(80, width))
+    button:ClearAllPoints()
+    button:SetSize(width, width)
+    if button.fgAtlas then
+        button.fgArt:SetSize(width, width * 60 / 55)
+        button.fgArt:ClearAllPoints(); button.fgArt:SetPoint("CENTER")
+        button.fgIcon:SetSize(width * 50 / 55, width * 50 / 55)
+        button.fgIcon:ClearAllPoints(); button.fgIcon:SetPoint("CENTER", button, "CENTER", -width * 3 / 55, 0)
+        button.fgHighlight:SetSize(width, width * 60 / 55)
+        button.fgHighlight:ClearAllPoints(); button.fgHighlight:SetPoint("CENTER")
+    else
+        button.fgArt:SetSize(width * 1.6, width * 1.6)
+        button.fgArt:ClearAllPoints(); button.fgArt:SetPoint("TOPLEFT", button, "TOPLEFT", -width * 0.075, width * 0.275)
+        button.fgIcon:SetSize(width * 0.8, width * 0.8)
+        button.fgIcon:ClearAllPoints(); button.fgIcon:SetPoint("CENTER")
+        button.fgHighlight:SetAllPoints()
+    end
+    if last then
+        local gap, nearestAbove
+        local _, lastBottom, _, lastHeight = ScreenRect(last)
+        for _, tab in ipairs(found) do
+            if tab ~= last then
+                local _, bottom, _, height = ScreenRect(tab)
+                if bottom and bottom > lastBottom and (not nearestAbove or bottom < nearestAbove) then
+                    nearestAbove = bottom
+                end
+            end
+        end
+        if nearestAbove then
+            local measured = (nearestAbove - (lastBottom + lastHeight)) / scale
+            if measured >= 0 and measured <= 40 then gap = measured end
+        end
+        button:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -(gap or 8))
+        button:SetFrameStrata(Get(last, "GetFrameStrata") or Get(frame, "GetFrameStrata") or "MEDIUM")
+        button:SetFrameLevel(Get(last, "GetFrameLevel") or Get(frame, "GetFrameLevel") or 1)
+    else
+        local guildTab = frame.GuildInfoTab
+        if guildTab then button:SetPoint("TOPLEFT", guildTab, "BOTTOMLEFT", 0, -8)
+        else button:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 2, 70) end
+        button:SetFrameStrata(Get(frame, "GetFrameStrata") or "MEDIUM")
+        button:SetFrameLevel((Get(frame, "GetFrameLevel") or 1) + 2)
+    end
+    return width
+end
+
+local function Update(frame)
+    frame = frame or _G.CommunitiesFrame
+    local button = frame and tabs[frame]
+    if not button then return false end
+    local guildTab = frame.GuildInfoTab
+    local show = IsInGuild and IsInGuild() and Get(frame, "IsShown") ~= false
+        and guildTab and Get(guildTab, "IsShown") ~= false
+    button:SetShown(show and true or false)
+    if show then Place(frame, button) end
+    return show and true or false
+end
+
+function ns.UpdateGameTab(frame) return Update(frame) end
+
+function ns.InstallGameTab()
+    local frame = _G.CommunitiesFrame
+    if not frame then return false end
+    local button = tabs[frame]
+    if not button then
+        button = CreateFrame("Button", "FreeGuildCommunitiesTab", frame)
+        local art = button:CreateTexture(nil, "BACKGROUND")
+        local hasAtlas = AtlasAvailable(art, "common-sidetab")
+        button.fgAtlas = hasAtlas
+        button.fgArt = art
+        if hasAtlas then
+            art:SetSize(55, 60)
+            art:SetPoint("CENTER")
+        else
+            art:SetTexture("Interface\\SpellBook\\SpellBook-SkillLineTab")
+            art:SetSize(52, 52)
+            art:SetPoint("CENTER")
+        end
+        button.fgIcon = SetIcon(button, 55, hasAtlas)
+        local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+        button.fgHighlight = highlight
+        if not (hasAtlas and AtlasAvailable(highlight, "common-sidetab-hover")) then
+            highlight:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+            highlight:SetBlendMode("ADD")
+            highlight:SetAllPoints()
+        else
+            highlight:SetSize(55, 60)
+            highlight:SetPoint("CENTER")
+        end
+        button:SetScript("OnClick", function() if ns.OpenConfig then ns.OpenConfig() end end)
+        button:SetScript("OnEnter", function(self)
+            if GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText("Free Guild"); GameTooltip:Show() end
+        end)
+        button:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        tabs[frame] = button
+    end
+
+    if not hooked[frame] then
+        hooked[frame] = true
+        if frame.HookScript then pcall(frame.HookScript, frame, "OnShow", function() Update(frame) end) end
+        if hooksecurefunc then
+            for _, method in ipairs({ "UpdateCommunitiesTabs", "OnClubSelected", "SetDisplayMode" }) do
+                if type(frame[method]) == "function" then
+                    pcall(hooksecurefunc, frame, method, function() Update(frame) end)
+                end
+            end
+        end
+        local guildTab = frame.GuildInfoTab
+        if guildTab and guildTab.HookScript then
+            pcall(guildTab.HookScript, guildTab, "OnShow", function() Update(frame) end)
+            pcall(guildTab.HookScript, guildTab, "OnHide", function() Update(frame) end)
+        end
+    end
+    Update(frame)
+    return true
+end
+
+local boot = CreateFrame("Frame")
+boot:RegisterEvent("ADDON_LOADED")
+boot:RegisterEvent("PLAYER_LOGIN")
+boot:RegisterEvent("PLAYER_GUILD_UPDATE")
+boot:SetScript("OnEvent", function(_, event, name)
+    if event == "ADDON_LOADED" and name ~= "Blizzard_Communities" then return end
+    if event == "PLAYER_GUILD_UPDATE" then Update(); return end
+    ns.InstallGameTab()
+end)

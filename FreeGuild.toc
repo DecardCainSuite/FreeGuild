@@ -19,4 +19,5 @@ Libs\LibFreeUI-1.0\LibFreeUI-1.0.lua
 Core.lua
 Raids.lua
 Config.lua
+GameTab.lua
 Minimap.lua
