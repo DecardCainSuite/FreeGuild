@@ -1,7 +1,7 @@
 <p align="center"><img src="curseforge/images/FreeGuild-logo-400.png" width="120" alt="Free Guild logo"></p>
 <h1 align="center">Free Guild</h1>
 <p align="center">Guild roster and rank tool for guild masters and officers: filters, bulk ranks, rules that promote for you, stats, raid rosters with attendance, guild info and notes.</p>
-<p align="center"><a href="https://www.curseforge.com/wow/addons/freeguild"><b>Download on CurseForge</b></a> · version <b>1.4.2</b> · WoW Forever (1.60.1) · <code>/fg</code></p>
+<p align="center"><a href="https://www.curseforge.com/wow/addons/freeguild"><b>Download on CurseForge</b></a> · version <b>1.4.3</b> · WoW Forever (1.60.1) · <code>/fg</code></p>
 
 ![Free Guild](curseforge/images/fg_1.png)
 
